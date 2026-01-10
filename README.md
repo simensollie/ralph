@@ -34,6 +34,12 @@ Here's my take –
 
 ## Workflow
 
+A picture is worth a thousand tweets and an hour-long video. Geoff's [overview here](https://ghuntley.com/ralph/) (sign up to his newsletter to see full article) really helped clarify the workflow details for moving from 1) idea → 2) individual JTBD-aligned specs → 3) comprehensive implementation plan → 4) Ralph work loops.
+
+![ralph-diagram.png](references/ralph-diagram.png)
+
+This diagram clarified for me that Ralph isn't just "a loop that codes." It's a funnel with 3 Phases, 2 Prompts, and 1 Loop.
+
 ### 1. Define Requirements (LLM conversation)
 
 - Discuss project ideas → identify Jobs to Be Done (JTBD)
@@ -64,14 +70,14 @@ _Why use the loop for both modes?_
 
 _Context loaded each iteration:_ `PROMPT.md` + `AGENTS.md`
 
-_PLANNING mode lifecycle:_
+_PLANNING mode loop lifecycle:_
 
 1. Subagents study `specs/*` and existing `/src`
 2. Compare specs against code (gap analysis)
 3. Create/update `IMPLEMENTATION_PLAN.md` with prioritized tasks
 4. No implementation
 
-_BUILDING mode lifecycle:_
+_BUILDING mode loop lifecycle:_
 
 1. _Orient_ – subagents study `specs/*` (requirements)
 2. _Read plan_ – study `IMPLEMENTATION_PLAN.md`
@@ -668,7 +674,7 @@ interface ReviewResult {
 function createReview(config: {
   criteria: string; // What to evaluate (behavioral, observable)
   artifact: string; // Text content OR screenshot path
-  intelligence?: "fast" | "smart"; // Optional, defaults to 'fast'
+  intelligence?: 'fast' | 'smart'; // Optional, defaults to 'fast'
 }): Promise<ReviewResult>;
 ```
 
@@ -689,38 +695,37 @@ The fixture implementation selects appropriate models. (Examples are current opt
 ##### `llm-review.test.ts` - Shows Ralph how to use it (text and vision examples):
 
 ```typescript
-import { createReview } from "@/lib/llm-review";
+import { createReview } from '@/lib/llm-review';
 
 // Example 1: Text evaluation
-test("welcome message tone", async () => {
+test('welcome message tone', async () => {
   const message = generateWelcomeMessage();
   const result = await createReview({
     criteria:
-      "Message uses warm, conversational tone appropriate for design professionals while clearly conveying value proposition",
+      'Message uses warm, conversational tone appropriate for design professionals while clearly conveying value proposition',
     artifact: message, // Text content
   });
   expect(result.pass).toBe(true);
 });
 
 // Example 2: Vision evaluation (screenshot path)
-test("dashboard visual hierarchy", async () => {
-  await page.screenshot({ path: "./tmp/dashboard.png" });
+test('dashboard visual hierarchy', async () => {
+  await page.screenshot({ path: './tmp/dashboard.png' });
   const result = await createReview({
-    criteria:
-      "Layout demonstrates clear visual hierarchy with obvious primary action",
-    artifact: "./tmp/dashboard.png", // Screenshot path
+    criteria: 'Layout demonstrates clear visual hierarchy with obvious primary action',
+    artifact: './tmp/dashboard.png', // Screenshot path
   });
   expect(result.pass).toBe(true);
 });
 
 // Example 3: Smart intelligence for complex judgment
-test("brand visual consistency", async () => {
-  await page.screenshot({ path: "./tmp/homepage.png" });
+test('brand visual consistency', async () => {
+  await page.screenshot({ path: './tmp/homepage.png' });
   const result = await createReview({
     criteria:
-      "Visual design maintains professional brand identity suitable for financial services while avoiding corporate sterility",
-    artifact: "./tmp/homepage.png",
-    intelligence: "smart", // Complex aesthetic judgment
+      'Visual design maintains professional brand identity suitable for financial services while avoiding corporate sterility',
+    artifact: './tmp/homepage.png',
+    intelligence: 'smart', // Complex aesthetic judgment
   });
   expect(result.pass).toBe(true);
 });
