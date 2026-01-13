@@ -1517,7 +1517,7 @@
                 "don't assume not implemented"
               </li>
               <li>
-                <strong><code>AGENTS.md</code></strong> – operational learnings
+                <strong><code>AGENTS .md</code></strong> – operational learnings
                 about how to build/test
               </li>
               <li>
@@ -1528,28 +1528,47 @@
             </ul>
 
             <div class="callout callout-tip">
-              <div class="callout-title">The plan is designed to be disposable…</div>
-              <ul>
-                <li>If it's wrong, throw it out and start over</li>
+              <div class="callout-title">Tip</div>
+              <ol>
                 <li>
-                  Regeneration cost is one Planning loop; cheap compared to
-                  Ralph going in circles
+                  try starting with <em>nothing</em> in <code>AGENTS.md</code>
+                  (empty file; no <em>best practices</em>, etc.)
                 </li>
                 <li>
-                  Regenerate when:
-                  <ul>
-                    <li>
-                      Ralph is going off track (implementing wrong things,
-                      duplicating work)
-                    </li>
-                    <li>Plan feels stale or doesn't match current state</li>
-                    <li>Too much clutter from completed items</li>
-                    <li>You've made significant spec changes</li>
-                    <li>You're confused about what's actually done</li>
-                  </ul>
+                  spot-test desired actions, find missteps
+                  (<a href="https://x.com/ClaytonFarr/status/2010780371542241508"
+                    >walkthrough example from Geoff</a
+                  >)
                 </li>
-              </ul>
+                <li>watch initial loops, see where gaps occur</li>
+                <li>
+                  tune behavior <em>only as needed</em>, via AGENTS updates
+                  and/or code patterns (shared utilities, etc.)
+                </li>
+              </ol>
             </div>
+
+            <p><strong>And remember, <em>the plan is disposable:</em></strong></p>
+            <ul>
+              <li>If it's wrong, throw it out, and start over</li>
+              <li>
+                Regeneration cost is one Planning loop; cheap compared to Ralph
+                going in circles
+              </li>
+              <li>
+                Regenerate when:
+                <ul>
+                  <li>
+                    Ralph is going off track (implementing wrong things,
+                    duplicating work)
+                  </li>
+                  <li>Plan feels stale or doesn't match current state</li>
+                  <li>Too much clutter from completed items</li>
+                  <li>You've made significant spec changes</li>
+                  <li>You're confused about what's actually done</li>
+                </ul>
+              </li>
+            </ul>
           </section>
 
           <hr />
@@ -2166,8 +2185,7 @@ Succinct learnings about how to RUN the project:
 
             <!-- HTML-ONLY: Section lead paragraph -->
             <p class="lead">
-              Clayton: I'm still determining the value/viability of these, but
-              the opportunities sound promising:
+              Clayton: I'm still determining the value/viability of these, but the opportunities sound promising –
             </p>
             <!-- /HTML-ONLY -->
 
