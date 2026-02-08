@@ -6,6 +6,10 @@
 #   ./loop.sh plan         # Plan mode, unlimited iterations
 #   ./loop.sh plan 5       # Plan mode, max 5 iterations
 
+# Enable agent teams (experimental) — allows spawning teammate agents
+# that collaborate via shared task list and direct messaging
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+
 # Parse arguments
 if [ "$1" = "plan" ]; then
     # Plan mode

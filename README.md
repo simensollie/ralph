@@ -77,23 +77,26 @@ _Context loaded each iteration:_ `PROMPT.md` + `AGENTS.md`
 
 _PLANNING mode loop lifecycle:_
 
-1. Subagents study `specs/*` and existing `/src`
-2. Compare specs against code (gap analysis)
-3. Create/update `IMPLEMENTATION_PLAN.md` with prioritized tasks
-4. No implementation
+1. Lead creates agent team, spawns 3-5 research teammates
+2. Teammates study `specs/*` and existing `/src` in parallel
+3. Teammates share findings and challenge each other's gap assessments
+4. Lead synthesizes findings into `IMPLEMENTATION_PLAN.md` with prioritized tasks
+5. Lead cleans up team, no implementation
 
 _BUILDING mode loop lifecycle:_
 
-1. _Orient_ – subagents study `specs/*` (requirements)
+1. _Orient_ – lead creates agent team, teammates study `specs/*` (requirements)
 2. _Read plan_ – study `IMPLEMENTATION_PLAN.md`
-3. _Select_ – pick the most important task
-4. _Investigate_ – subagents study relevant `/src` ("don't assume not implemented")
-5. _Implement_ – N subagents for file operations
-6. _Validate_ – 1 subagent for build/tests (backpressure)
-7. _Update `IMPLEMENTATION_PLAN.md`_ – mark task done, note discoveries/bugs
-8. _Update `AGENTS.md`_ – if operational learnings
-9. _Commit_
-10. _Loop ends_ → context cleared → next iteration starts fresh
+3. _Select_ – pick up to 5 independent tasks from plan
+4. _Assign_ – each teammate gets a task with clear file ownership (no conflicts)
+5. _Plan approval_ – teammates plan their approach, lead reviews and approves/rejects
+6. _Investigate_ – teammates study relevant `/src` ("don't assume not implemented")
+7. _Implement_ – teammates implement in parallel
+8. _Validate_ – one teammate runs build/tests (backpressure)
+9. _Update `IMPLEMENTATION_PLAN.md`_ – mark tasks done, note discoveries/bugs
+10. _Update `AGENTS.md`_ – if operational learnings
+11. _Commit_
+12. _Clean up team_ → loop ends → context cleared → next iteration starts fresh
 
 #### Concepts
 
@@ -136,11 +139,13 @@ _Topic Scope Test: "One Sentence Without 'And'"_
 
 This informs and drives everything else:
 
-- _Use the main agent/context as a scheduler_
-  - Don't allocate expensive work to main context; spawn subagents whenever possible instead
-- _Use subagents as memory extension_
-  - Each subagent gets ~156kb that's garbage collected
-  - Fan out to avoid polluting main context
+- _Use the lead agent as a coordinator_
+  - Don't allocate expensive work to lead context; delegate to teammates or subagents instead
+  - Use delegate mode to restrict the lead to coordination-only tools
+- _Use agent teams as distributed context_
+  - Each teammate gets its own context window (~156kb) that's garbage collected
+  - Teammates can share findings and challenge each other via messaging
+  - Fan out to avoid polluting lead context
 - _Simplicity and brevity win_
   - Applies to number of parts in system, loop config, and content
   - Verbose inputs degrade determinism
@@ -218,11 +223,65 @@ And remember, _the plan is disposable:_
 
 ---
 
+## Agent Teams
+
+The updated prompts use Claude Code's [agent teams](https://code.claude.com/docs/en/agent-teams) feature instead of plain subagents. Agent teams let the lead agent spawn independent teammates that collaborate via shared task lists and direct messaging — a significant upgrade over subagents that can only report back to the caller.
+
+### Why Agent Teams for Ralph
+
+| Aspect | Subagents (previous) | Agent Teams (current) |
+| ------ | -------------------- | --------------------- |
+| **Communication** | One-way (report to parent) | Multi-directional (message each other) |
+| **Coordination** | Parent manages all work | Self-coordination via shared task list |
+| **Context** | Own window, results summarized back | Own window, fully independent |
+| **Best for** | Focused tasks where only result matters | Complex work requiring collaboration |
+
+_Planning benefits:_ Teammates can share findings across specs, challenge each other's gap assessments, and cross-reference discoveries — producing better analysis than independent subagents reporting back individually.
+
+_Building benefits:_ Multiple tasks implemented in parallel within a single iteration. Each teammate owns specific files to prevent conflicts. Plan approval ensures quality before implementation begins.
+
+### Key Concepts
+
+- **Delegate mode**: Restricts the lead to coordination-only tools. The lead assigns tasks, reviews plans, synthesizes results — but doesn't implement.
+- **Plan approval**: Teammates must plan their approach before implementing. The lead reviews and approves or rejects with feedback.
+- **File ownership**: Each teammate is assigned distinct files to prevent overwrites. Two teammates editing the same file leads to conflicts.
+- **Shared task list**: All agents can see task status and claim available work. Task dependencies are managed automatically.
+- **Team cleanup**: Always clean up the team at the end of each iteration to free resources.
+
+### Setup
+
+Enable agent teams by setting the environment variable (already included in `loop.sh`):
+
+```bash
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+Or add to your `settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+### Subagents vs Agent Teams
+
+Agent teams don't fully replace subagents. Use each where they fit best:
+
+- **Agent teams**: Research, gap analysis, parallel implementation of independent modules, cross-layer coordination
+- **Subagents**: Quick focused lookups, running tests (backpressure), updating a single file
+
+The updated prompts use agent teams for the primary orchestration (research + implementation) while individual focused tasks (like running tests) are handled by teammates within the team.
+
+---
+
 ## Loop Mechanics
 
 ### I. Task Selection
 
-`loop.sh` acts in effect as an 'outer loop' where each loop = a single task (in separate sessions). When the task is completed, `loop.sh` kicks off a fresh session to select the next task, if any remaining tasks are available.
+`loop.sh` acts in effect as an 'outer loop' where each loop = one agent team session (in separate sessions). When the team completes its tasks, `loop.sh` kicks off a fresh session to select the next batch of tasks, if any remaining tasks are available.
 
 Geoff's initial minimal form of `loop.sh` script:
 
@@ -237,10 +296,13 @@ _What controls task continuation?_
 The continuation mechanism is elegantly simple:
 
 1. _Bash loop runs_ → feeds `PROMPT.md` to claude
-2. _PROMPT.md instructs_ → "Study IMPLEMENTATION_PLAN.md and choose the most important thing..."
-3. _Agent completes one task_ → updates IMPLEMENTATION_PLAN.md on disk, commits, exits
-4. _Bash loop restarts immediately_ → fresh context window
-5. _Agent reads updated plan_ → picks next most important thing...
+2. _PROMPT.md instructs_ → "Study IMPLEMENTATION_PLAN.md and choose up to 5 independent items..."
+3. _Lead creates agent team_ → spawns teammates, assigns tasks with file ownership
+4. _Teammates plan_ → lead reviews and approves/rejects plans
+5. _Teammates implement in parallel_ → one teammate validates via tests
+6. _Lead commits_ → updates IMPLEMENTATION_PLAN.md on disk, cleans up team, exits
+7. _Bash loop restarts immediately_ → fresh context window
+8. _New lead reads updated plan_ → picks next batch of tasks...
 
 _Key insight:_ The IMPLEMENTATION_PLAN.md file persists on disk between iterations and acts as shared state between otherwise isolated loop executions. Each iteration deterministically loads the same files (`PROMPT.md` + `AGENTS.md` + `specs/*`) and reads the current state from disk.
 
@@ -248,15 +310,15 @@ _No sophisticated orchestration needed_ - just a dumb bash loop that keeps resta
 
 ### II. Task Execution
 
-Each task is prompted to keep doing its work against backpressure (tests, etc) until it passes - creating a pseudo inner 'loop' (in single session).
+Each iteration, the lead creates an agent team and assigns up to 5 independent tasks to teammates. Each teammate works against backpressure (tests, etc) until it passes - creating parallel inner 'loops' within a single iteration.
 
-This inner loop is just internal self-correction / iterative reasoning within one long model response, powered by backpressure prompts, tool use, and subagents. It's not a loop in the programming sense.
+Each teammate's inner loop is internal self-correction / iterative reasoning within one long model response, powered by backpressure prompts, tool use, and plan approval from the lead. It's not a loop in the programming sense.
 
-A single task execution has no hard technical limit. Control relies on:
+A single iteration has no hard technical limit. Control relies on:
 
-- _Scope discipline_ - PROMPT.md instructs "one task" and "commit when tests pass"
-- _Backpressure_ - tests/build failures force the agent to fix issues before committing
-- _Natural completion_ - agent exits after successful commit
+- _Scope discipline_ - PROMPT.md instructs "up to 5 independent items" with "file ownership" and "plan approval"
+- _Backpressure_ - tests/build failures force teammates to fix issues before the lead commits
+- _Natural completion_ - lead commits and cleans up team after all tasks pass
 
 _Ralph can go in circles, ignore instructions, or take wrong directions_ - this is expected and part of the tuning process. When Ralph "tests you" by failing in specific ways, you add guardrails to the prompt or adjust backpressure mechanisms. The nondeterminism is manageable through observation and iteration.
 
@@ -277,6 +339,10 @@ _This enhancement uses two saved prompt files:_
 #   ./loop.sh 20           # Build mode, max 20 tasks
 #   ./loop.sh plan         # Plan mode, unlimited tasks
 #   ./loop.sh plan 5       # Plan mode, max 5 tasks
+
+# Enable agent teams (experimental) — allows spawning teammate agents
+# that collaborate via shared task list and direct messaging
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 
 # Parse arguments
 if [ "$1" = "plan" ]; then
@@ -350,16 +416,20 @@ _Mode selection:_
 _Max-iterations:_
 
 - Limits the _task selection loop_ (number of tasks attempted; NOT tool calls within a single task)
-- Each iteration = one fresh context window = one task from IMPLEMENTATION_PLAN.md = one commit
+- Each iteration = one fresh context window = up to 5 tasks from IMPLEMENTATION_PLAN.md via agent team = one commit
 - `./loop.sh` runs unlimited (manual stop with Ctrl+C)
 - `./loop.sh 20` runs max 20 iterations then stops
+
+_Environment variables:_
+
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`: Enables agent teams — allows the lead to spawn teammate agents that collaborate via shared task list and direct messaging. Each teammate gets its own context window and can work independently.
 
 _Claude CLI flags:_
 
 - `-p` (headless mode): Enables non-interactive operation, reads prompt from stdin
-- `--dangerously-skip-permissions`: Bypasses all permission prompts for fully automated runs
+- `--dangerously-skip-permissions`: Bypasses all permission prompts for fully automated runs (teammates inherit this)
 - `--output-format=stream-json`: Outputs structured JSON for logging/monitoring/visualization
-- `--model opus`: Primary agent uses Opus for task selection, prioritization, and coordination (can use `sonnet` for speed if tasks are clear)
+- `--model opus`: Lead agent uses Opus for coordination and plan approval (teammates can use Sonnet for implementation)
 - `--verbose`: Provides detailed execution logging
 
 ---
@@ -406,13 +476,16 @@ _Prompt Structure:_
 | _Phase 1-4_            | Main instructions: task, validation, commit           |
 | _999... numbering_     | Guardrails/invariants (higher number = more critical) |
 
-_Key Language Patterns_ (Geoff's specific phrasing):
+_Key Language Patterns_ (Geoff's specific phrasing, adapted for agent teams):
 
 - "study" (not "read" or "look at")
 - "don't assume not implemented" (critical - the Achilles' heel)
-- "using parallel subagents" / "up to N subagents"
-- "only 1 subagent for build/tests" (backpressure control)
-- "Think extra hard" (now "Ultrathink)
+- "create an agent team" / "spawn teammates" (replaces "using parallel subagents")
+- "delegate mode" (lead coordinates only, doesn't implement)
+- "plan approval" (teammates plan before implementing, lead reviews)
+- "file ownership" (prevent teammate conflicts on same files)
+- "clean up the team" (graceful shutdown after work completes)
+- "Think extra hard" (now "Ultrathink")
 - "capture the why"
 - "keep it up to date"
 - "if functionality is missing then it's your job to add it"
@@ -423,45 +496,47 @@ _Key Language Patterns_ (Geoff's specific phrasing):
 _Notes:_
 
 - Update [project-specific goal] placeholder below.
-- Current subagents names presume using Claude.
+- Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable.
 
 ```
-0a. Study `specs/*` with up to 250 parallel Sonnet subagents to learn the application specifications.
-0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0c. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities & components.
+0a. Create an agent team for planning research. Spawn 3-5 teammates to study `specs/*` in parallel and learn the application specifications.
+0b. Study @IMPLEMENTATION_PLAN.md and @LESSONS_LEARNED.md (if present) to understand the plan so far.
+0c. Have teammates study `src/lib/*` to understand shared utilities & components.
 0d. For reference, the application source code is in `src/*`.
 
-1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 500 Sonnet subagents to study existing source code in `src/*` and compare it against `specs/*`. Use an Opus subagent to analyze findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and direct teammates to study existing source code in `src/*` and compare it against `specs/*`. Teammates should share findings and challenge each other's gap assessments via messaging. Synthesize teammate findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete. Clean up the team when planning is complete.
 
 IMPORTANT: Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
 
-ULTIMATE GOAL: We want to achieve [project-specific goal]. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.
+ULTIMATE GOAL: We want to achieve [project-specific goal]. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md.
 ```
 
 #### `PROMPT_build.md` Template
 
-_Note:_ Current subagents names presume using Claude.
+_Note:_ Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable.
 
 ```
-0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
+0a. Create an agent team. Spawn teammates to study `specs/*` in parallel and learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md.
-0c. For reference, the application source code is in `src/*`.
+0c. Study @LESSONS_LEARNED.md.
+0d. For reference, the application source code is in `src/*`.
 
-1. Your task is to implement functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. Before making changes, search the codebase (don't assume not implemented) using Sonnet subagents. You may use up to 500 parallel Sonnet subagents for searches/reads and only 1 Sonnet subagent for build/tests. Use Opus subagents when complex reasoning is needed (debugging, architectural decisions).
-2. After implementing functionality or resolving problems, run the tests for that unit of code that was improved. If functionality is missing then it's your job to add it as per the application specifications. Ultrathink.
-3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings using a subagent. When resolved, update and remove the item.
-4. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`.
+1. Your task is to implement functionality per the specifications using an agent team. Follow @IMPLEMENTATION_PLAN.md and choose up to 5 independent items to address in parallel. Assign each task to a teammate with clear file ownership to prevent conflicts. Require plan approval before teammates implement — review and approve or reject with feedback. Before making changes, teammates must search the codebase (don't assume not implemented). Use delegate mode — coordinate, review plans, and synthesize only.
+2. After teammates implement functionality or resolve problems, have one teammate run the tests for the changed code. If functionality is missing then it's their job to add it as per the application specifications. Ultrathink.
+3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings. When resolved, update and remove the item.
+4. Append your progress and insights to @LESSONS_LEARNED.md (never replace, always append) sorted newest to oldest.
+5. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`. Clean up the team.
 
 99999. Important: When authoring documentation, capture the why — tests and implementation importance.
 999999. Important: Single sources of truth, no migrations/adapters. If tests unrelated to your work fail, resolve them as part of the increment.
 9999999. As soon as there are no build or test errors create a git tag. If there are no git tags start at 0.0.0 and increment patch by 1 for example 0.0.1  if 0.0.0 does not exist.
 99999999. You may add extra logging if required to debug issues.
-999999999. Keep @IMPLEMENTATION_PLAN.md current with learnings using a subagent — future work depends on this to avoid duplicating efforts. Update especially after finishing your turn.
-9999999999. When you learn something new about how to run the application, update @AGENTS.md using a subagent but keep it brief. For example if you run commands multiple times before learning the correct command then that file should be updated.
-99999999999. For any bugs you notice, resolve them or document them in @IMPLEMENTATION_PLAN.md using a subagent even if it is unrelated to the current piece of work.
+999999999. Keep @IMPLEMENTATION_PLAN.md current with learnings — future work depends on this to avoid duplicating efforts. Update especially after finishing your turn.
+9999999999. When you learn something new about how to run the application, update @AGENTS.md but keep it brief. For example if you run commands multiple times before learning the correct command then that file should be updated.
+99999999999. For any bugs you notice, resolve them or document them in @IMPLEMENTATION_PLAN.md even if it is unrelated to the current piece of work.
 999999999999. Implement functionality completely. Placeholders and stubs waste efforts and time redoing the same work.
-9999999999999. When @IMPLEMENTATION_PLAN.md becomes large periodically clean out the items that are completed from the file using a subagent.
-99999999999999. If you find inconsistencies in the specs/* then use an Opus 4.5 subagent with 'ultrathink' requested to update the specs.
+9999999999999. When @IMPLEMENTATION_PLAN.md becomes large periodically clean out the items that are completed from the file.
+99999999999999. If you find inconsistencies in the specs/* then use a teammate with 'ultrathink' requested to update the specs.
 999999999999999. IMPORTANT: Keep @AGENTS.md operational only — status updates and progress notes belong in `IMPLEMENTATION_PLAN.md`. A bloated AGENTS.md pollutes every future loop's context.
 ```
 
@@ -532,7 +607,7 @@ One markdown file per topic of concern. These are the source of truth for what s
 
 - Created during Requirements phase (human + LLM conversation)
 - Consumed by both PLANNING and BUILDING modes
-- Can be updated if inconsistencies discovered (rare, use subagent)
+- Can be updated if inconsistencies discovered (rare, use teammate)
 
 _No pre-specified template_ - let Ralph/LLM dictate and manage format that works best for it.
 
@@ -787,7 +862,7 @@ _Planning Phase_ - Update `PROMPT_plan.md`:
 After:
 
 ```
-...Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+...Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete. Clean up the team when planning is complete.
 ```
 
 Insert this:
@@ -896,6 +971,9 @@ Extends the base enhanced loop script to add work branch support with scoped pla
 ```bash
 #!/bin/bash
 set -euo pipefail
+
+# Enable agent teams (experimental)
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 
 # Usage:
 #   ./loop.sh [plan] [max_iterations]       # Plan/build on current branch
@@ -1037,16 +1115,16 @@ done
 _Note:_ Identical to `PROMPT_plan.md` but with scoping instructions and `WORK_SCOPE` env var substituted (automatically by the loop script).
 
 ```
-0a. Study `specs/*` with up to 250 parallel Sonnet subagents to learn the application specifications.
+0a. Create an agent team for planning research. Spawn 3-5 teammates to study `specs/*` in parallel and learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0c. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities & components.
+0c. Have teammates study `src/lib/*` to understand shared utilities & components.
 0d. For reference, the application source code is in `src/*`.
 
-1. You are creating a SCOPED implementation plan for work: "${WORK_SCOPE}". Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 500 Sonnet subagents to study existing source code in `src/*` and compare it against `specs/*`. Use an Opus subagent to analyze findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+1. You are creating a SCOPED implementation plan for work: "${WORK_SCOPE}". Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and direct teammates to study existing source code in `src/*` and compare it against `specs/*`. Teammates should share findings and challenge each other's gap assessments via messaging. Synthesize teammate findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete. Clean up the team when planning is complete.
 
 IMPORTANT: This is SCOPED PLANNING for "${WORK_SCOPE}" only. Create a plan containing ONLY tasks directly related to this work scope. Be conservative - if uncertain whether a task belongs to this work, exclude it. The plan can be regenerated if too narrow. Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
 
-ULTIMATE GOAL: We want to achieve the scoped work "${WORK_SCOPE}". Consider missing elements related to this work and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.
+ULTIMATE GOAL: We want to achieve the scoped work "${WORK_SCOPE}". Consider missing elements related to this work and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md.
 ```
 
 #### Compatibility with Core Philosophy
@@ -1203,24 +1281,24 @@ Variant of `PROMPT_plan.md` that adds audience context and SLC-oriented slice re
 _Notes:_
 
 - Unlike the default template, this does not have a `[project-specific goal]` placeholder — the goal is implicit: recommend the most valuable next release for the audience.
-- Current subagents names presume using Claude.
+- Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable.
 
 ```
 0a. Study @AUDIENCE_JTBD.md to understand who we're building for and their Jobs to Be Done.
-0b. Study `specs/*` with up to 250 parallel Sonnet subagents to learn JTBD activities.
+0b. Create an agent team for planning research. Spawn 3-5 teammates to study `specs/*` in parallel and learn JTBD activities.
 0c. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0d. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities & components.
+0d. Have teammates study `src/lib/*` to understand shared utilities & components.
 0e. For reference, the application source code is in `src/*`.
 
 1. Sequence the activities in `specs/*` into a user journey map for the audience in @AUDIENCE_JTBD.md. Consider how activities flow into each other and what dependencies exist.
 
-2. Determine the next SLC release. Use up to 500 Sonnet subagents to compare `src/*` against `specs/*`. Use an Opus subagent to analyze findings. Ultrathink. Given what's already implemented recommend which activities (at what capability depths) form the most valuable next release. Prefer thin horizontal slices - the narrowest scope that still delivers real value. A good slice is Simple (narrow, achievable), Lovable (people want to use it), and Complete (fully accomplishes a meaningful job, not a broken preview).
+2. Determine the next SLC release. Direct teammates to compare `src/*` against `specs/*` in parallel. Teammates should share findings and challenge each other's assessments. Synthesize teammate findings. Ultrathink. Given what's already implemented recommend which activities (at what capability depths) form the most valuable next release. Prefer thin horizontal slices - the narrowest scope that still delivers real value. A good slice is Simple (narrow, achievable), Lovable (people want to use it), and Complete (fully accomplishes a meaningful job, not a broken preview).
 
-3. Use an Opus subagent (ultrathink) to analyze and synthesize the findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented for the recommended SLC release. Begin plan with a summary of the recommended SLC release (what's included and why), then list prioritized tasks for that scope. Consider TODOs, placeholders, minimal implementations, skipped tests - but scoped to the release. Note discoveries outside scope as future work.
+3. Synthesize the findings (ultrathink), prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented for the recommended SLC release. Begin plan with a summary of the recommended SLC release (what's included and why), then list prioritized tasks for that scope. Consider TODOs, placeholders, minimal implementations, skipped tests - but scoped to the release. Note discoveries outside scope as future work. Clean up the team when planning is complete.
 
 IMPORTANT: Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
 
-ULTIMATE GOAL: We want to achieve the most valuable next release for the audience in @AUDIENCE_JTBD.md. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.
+ULTIMATE GOAL: We want to achieve the most valuable next release for the audience in @AUDIENCE_JTBD.md. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md.
 ```
 
 ##### Notes

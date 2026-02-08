@@ -950,6 +950,7 @@
             <ul>
               <li><a href="#workflow">Workflow</a></li>
               <li><a href="#key-principles">Key Principles</a></li>
+              <li><a href="#agent-teams">Agent Teams</a></li>
               <li><a href="#loop-mechanics">Loop Mechanics</a></li>
               <li><a href="#files">Files</a></li>
               <li><a href="#enhancements">Enhancements?</a></li>
@@ -1160,15 +1161,21 @@
               <div class="details-content">
                 <ol>
                   <li>
-                    Subagents study <code>specs/*</code> and existing
-                    <code>/src</code>
+                    Lead creates agent team, spawns 3-5 research teammates
                   </li>
-                  <li>Compare specs against code (gap analysis)</li>
                   <li>
-                    Create/update <code>IMPLEMENTATION_PLAN.md</code> with
-                    prioritized tasks
+                    Teammates study <code>specs/*</code> and existing
+                    <code>/src</code> in parallel
                   </li>
-                  <li>No implementation</li>
+                  <li>
+                    Teammates share findings and challenge each other's gap
+                    assessments
+                  </li>
+                  <li>
+                    Lead synthesizes findings into
+                    <code>IMPLEMENTATION_PLAN.md</code> with prioritized tasks
+                  </li>
+                  <li>Lead cleans up team, no implementation</li>
                 </ol>
               </div>
             </div>
@@ -1180,30 +1187,39 @@
               <div class="details-content">
                 <ol>
                   <li>
-                    <strong>Orient</strong> – subagents study
-                    <code>specs/*</code> (requirements)
+                    <strong>Orient</strong> – lead creates agent team, teammates
+                    study <code>specs/*</code> (requirements)
                   </li>
                   <li>
                     <strong>Read plan</strong> – study
                     <code>IMPLEMENTATION_PLAN.md</code>
                   </li>
                   <li>
-                    <strong>Select</strong> – pick the most important task
+                    <strong>Select</strong> – pick up to 5 independent tasks
+                    from plan
                   </li>
                   <li>
-                    <strong>Investigate</strong> – subagents study relevant
+                    <strong>Assign</strong> – each teammate gets a task with
+                    clear file ownership (no conflicts)
+                  </li>
+                  <li>
+                    <strong>Plan approval</strong> – teammates plan their
+                    approach, lead reviews and approves/rejects
+                  </li>
+                  <li>
+                    <strong>Investigate</strong> – teammates study relevant
                     <code>/src</code> ("don't assume not implemented")
                   </li>
                   <li>
-                    <strong>Implement</strong> – N subagents for file operations
+                    <strong>Implement</strong> – teammates implement in parallel
                   </li>
                   <li>
-                    <strong>Validate</strong> – 1 subagent for build/tests
+                    <strong>Validate</strong> – one teammate runs build/tests
                     (backpressure)
                   </li>
                   <li>
                     <strong>Update <code>IMPLEMENTATION_PLAN.md</code></strong>
-                    – mark task done, note discoveries/bugs
+                    – mark tasks done, note discoveries/bugs
                   </li>
                   <li>
                     <strong>Update <code>AGENTS.md</code></strong> – if
@@ -1211,8 +1227,8 @@
                   </li>
                   <li><strong>Commit</strong></li>
                   <li>
-                    <strong>Loop ends</strong> → context cleared → next
-                    iteration starts fresh
+                    <strong>Clean up team</strong> → loop ends → context
+                    cleared → next iteration starts fresh
                   </li>
                 </ol>
               </div>
@@ -1335,14 +1351,16 @@
 
             <ul>
               <li>
-                <strong>Use the main agent/context as a scheduler</strong> –
-                Don't allocate expensive work to main context; spawn subagents
-                whenever possible instead
+                <strong>Use the lead agent as a coordinator</strong> –
+                Don't allocate expensive work to lead context; delegate to
+                teammates or subagents instead. Use delegate mode to restrict
+                the lead to coordination-only tools
               </li>
               <li>
-                <strong>Use subagents as memory extension</strong> – Each
-                subagent gets ~156kb that's garbage collected. Fan out to avoid
-                polluting main context
+                <strong>Use agent teams as distributed context</strong> – Each
+                teammate gets its own context window (~156kb) that's garbage
+                collected. Teammates can share findings and challenge each other
+                via messaging. Fan out to avoid polluting lead context
               </li>
               <li>
                 <strong>Simplicity and brevity win</strong> – Applies to number
@@ -1573,6 +1591,161 @@
 
           <hr />
 
+          <!-- Agent Teams -->
+          <section id="agent-teams">
+            <h2>Agent Teams</h2>
+
+            <!-- HTML-ONLY: Section lead paragraph -->
+            <p class="lead">
+              The updated prompts use agent teams instead of plain subagents,
+              enabling parallel collaboration within each loop iteration.
+            </p>
+            <!-- /HTML-ONLY -->
+
+            <p>
+              The updated prompts use Claude Code's
+              <a href="https://code.claude.com/docs/en/agent-teams">agent teams</a>
+              feature instead of plain subagents. Agent teams let the lead agent
+              spawn independent teammates that collaborate via shared task lists
+              and direct messaging &mdash; a significant upgrade over subagents
+              that can only report back to the caller.
+            </p>
+
+            <h3>Why Agent Teams for Ralph</h3>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Aspect</th>
+                    <th>Subagents (previous)</th>
+                    <th>Agent Teams (current)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Communication</strong></td>
+                    <td>One-way (report to parent)</td>
+                    <td>Multi-directional (message each other)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Coordination</strong></td>
+                    <td>Parent manages all work</td>
+                    <td>Self-coordination via shared task list</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Context</strong></td>
+                    <td>Own window, results summarized back</td>
+                    <td>Own window, fully independent</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Best for</strong></td>
+                    <td>Focused tasks where only result matters</td>
+                    <td>Complex work requiring collaboration</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              <strong>Planning benefits:</strong> Teammates can share findings
+              across specs, challenge each other's gap assessments, and
+              cross-reference discoveries &mdash; producing better analysis than
+              independent subagents reporting back individually.
+            </p>
+
+            <p>
+              <strong>Building benefits:</strong> Multiple tasks implemented in
+              parallel within a single iteration. Each teammate owns specific
+              files to prevent conflicts. Plan approval ensures quality before
+              implementation begins.
+            </p>
+
+            <h3>Key Concepts</h3>
+
+            <ul>
+              <li>
+                <strong>Delegate mode</strong>: Restricts the lead to
+                coordination-only tools. The lead assigns tasks, reviews plans,
+                synthesizes results &mdash; but doesn't implement.
+              </li>
+              <li>
+                <strong>Plan approval</strong>: Teammates must plan their
+                approach before implementing. The lead reviews and approves or
+                rejects with feedback.
+              </li>
+              <li>
+                <strong>File ownership</strong>: Each teammate is assigned
+                distinct files to prevent overwrites. Two teammates editing the
+                same file leads to conflicts.
+              </li>
+              <li>
+                <strong>Shared task list</strong>: All agents can see task
+                status and claim available work. Task dependencies are managed
+                automatically.
+              </li>
+              <li>
+                <strong>Team cleanup</strong>: Always clean up the team at the
+                end of each iteration to free resources.
+              </li>
+            </ul>
+
+            <h3>Setup</h3>
+
+            <p>
+              Enable agent teams by setting the environment variable (already
+              included in <code>loop.sh</code>):
+            </p>
+
+            <div class="code-block">
+              <div class="code-block-header">
+                <span>bash</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+              <pre><code>export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code></pre>
+            </div>
+
+            <p>Or add to your <code>settings.json</code>:</p>
+
+            <div class="code-block">
+              <div class="code-block-header">
+                <span>settings.json</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+              <pre><code>{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}</code></pre>
+            </div>
+
+            <h3>Subagents vs Agent Teams</h3>
+
+            <p>
+              Agent teams don't fully replace subagents. Use each where they fit
+              best:
+            </p>
+
+            <ul>
+              <li>
+                <strong>Agent teams</strong>: Research, gap analysis, parallel
+                implementation of independent modules, cross-layer coordination
+              </li>
+              <li>
+                <strong>Subagents</strong>: Quick focused lookups, running tests
+                (backpressure), updating a single file
+              </li>
+            </ul>
+
+            <p>
+              The updated prompts use agent teams for the primary orchestration
+              (research + implementation) while individual focused tasks (like
+              running tests) are handled by teammates within the team.
+            </p>
+          </section>
+
+          <hr />
+
           <!-- Loop Mechanics -->
           <section id="loop-mechanics">
             <h2>Loop Mechanics</h2>
@@ -1586,7 +1759,15 @@
 
             <h3><span class="section-icon">🔄</span> Task Selection</h3>
 
-            <p>Geoff's initial minimal form of `loop.sh` script:</p>
+            <p>
+              <code>loop.sh</code> acts in effect as an 'outer loop' where each
+              loop = one agent team session (in separate sessions). When the
+              team completes its tasks, <code>loop.sh</code> kicks off a fresh
+              session to select the next batch of tasks, if any remaining tasks
+              are available.
+            </p>
+
+            <p>Geoff's initial minimal form of <code>loop.sh</code> script:</p>
 
             <div class="code-block">
               <div class="code-block-header">
@@ -1611,19 +1792,31 @@
               </li>
               <li>
                 <strong>PROMPT.md instructs</strong> → "Study
-                IMPLEMENTATION_PLAN.md and choose the most important thing"
+                IMPLEMENTATION_PLAN.md and choose up to 5 independent items..."
               </li>
               <li>
-                <strong>Agent completes one task</strong> → updates
-                IMPLEMENTATION_PLAN.md on disk, commits, exits
+                <strong>Lead creates agent team</strong> → spawns teammates,
+                assigns tasks with file ownership
+              </li>
+              <li>
+                <strong>Teammates plan</strong> → lead reviews and
+                approves/rejects plans
+              </li>
+              <li>
+                <strong>Teammates implement in parallel</strong> → one teammate
+                validates via tests
+              </li>
+              <li>
+                <strong>Lead commits</strong> → updates IMPLEMENTATION_PLAN.md
+                on disk, cleans up team, exits
               </li>
               <li>
                 <strong>Bash loop restarts immediately</strong> → fresh context
                 window
               </li>
               <li>
-                <strong>Agent reads updated plan</strong> → picks next most
-                important thing
+                <strong>New lead reads updated plan</strong> → picks next batch
+                of tasks...
               </li>
             </ol>
 
@@ -1646,21 +1839,35 @@
             <h3>Task Execution</h3>
 
             <p>
-              A single task execution has no hard technical limit. Control
+              Each iteration, the lead creates an agent team and assigns up to
+              5 independent tasks to teammates. Each teammate works against
+              backpressure (tests, etc) until it passes – creating parallel
+              inner 'loops' within a single iteration.
+            </p>
+
+            <p>
+              Each teammate's inner loop is internal self-correction / iterative
+              reasoning within one long model response, powered by backpressure
+              prompts, tool use, and plan approval from the lead. It's not a
+              loop in the programming sense.
+            </p>
+
+            <p>
+              A single iteration has no hard technical limit. Control
               relies on:
             </p>
             <ul>
               <li>
-                <strong>Scope discipline</strong> – PROMPT.md instructs "one
-                task" and "commit when tests pass"
+                <strong>Scope discipline</strong> – PROMPT.md instructs "up to
+                5 independent items" with "file ownership" and "plan approval"
               </li>
               <li>
-                <strong>Backpressure</strong> – tests/build failures force the
-                agent to fix issues before committing
+                <strong>Backpressure</strong> – tests/build failures force
+                teammates to fix issues before the lead commits
               </li>
               <li>
-                <strong>Natural completion</strong> – agent exits after
-                successful commit
+                <strong>Natural completion</strong> – lead commits and cleans up
+                team after all tasks pass
               </li>
             </ul>
 
@@ -1712,6 +1919,10 @@
 <span class="token-comment">#   ./loop.sh plan         # Plan mode, unlimited tasks</span>
 <span class="token-comment">#   ./loop.sh plan 5       # Plan mode, max 5 tasks</span>
 
+<span class="token-comment"># Enable agent teams (experimental) — allows spawning teammate agents</span>
+<span class="token-comment"># that collaborate via shared task list and direct messaging</span>
+<span class="token-keyword">export</span> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+
 <span class="token-comment"># Parse arguments</span>
 <span class="token-keyword">if</span> [ <span class="token-string">"$1"</span> = <span class="token-string">"plan"</span> ]; <span class="token-keyword">then</span>
     <span class="token-comment"># Plan mode</span>
@@ -1737,7 +1948,7 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
 <span class="token-function">echo</span> <span class="token-string">"Mode:   $MODE"</span>
 <span class="token-function">echo</span> <span class="token-string">"Prompt: $PROMPT_FILE"</span>
 <span class="token-function">echo</span> <span class="token-string">"Branch: $CURRENT_BRANCH"</span>
-[ $MAX_ITERATIONS -gt 0 ] && <span class="token-function">echo</span> <span class="token-string">"Max:    $MAX_ITERATIONS iterations"</span>
+[ $MAX_ITERATIONS -gt 0 ] && <span class="token-function">echo</span> <span class="token-string">"Max:    $MAX_ITERATIONS iterations (number of tasks)"</span>
 <span class="token-function">echo</span> <span class="token-string">"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"</span>
 
 <span class="token-comment"># Verify prompt file exists</span>
@@ -1748,7 +1959,7 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
 
 <span class="token-keyword">while</span> true; <span class="token-keyword">do</span>
     <span class="token-keyword">if</span> [ $MAX_ITERATIONS -gt 0 ] && [ $ITERATION -ge $MAX_ITERATIONS ]; <span class="token-keyword">then</span>
-        <span class="token-function">echo</span> <span class="token-string">"Reached max iterations: $MAX_ITERATIONS"</span>
+        <span class="token-function">echo</span> <span class="token-string">"Reached max iterations (number of tasks): $MAX_ITERATIONS"</span>
         <span class="token-keyword">break</span>
     <span class="token-keyword">fi</span>
 
@@ -1756,8 +1967,8 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
     <span class="token-comment"># -p: Headless mode (non-interactive, reads from stdin)</span>
     <span class="token-comment"># --dangerously-skip-permissions: Auto-approve all tool calls (YOLO mode)</span>
     <span class="token-comment"># --output-format=stream-json: Structured output for logging/monitoring</span>
-    <span class="token-comment"># --model opus: Primary agent uses Opus for complex reasoning (task selection, prioritization)</span>
-    <span class="token-comment">#               Can use 'sonnet' in build mode for speed if plan is clear and tasks well-defined</span>
+    <span class="token-comment"># --model opus: Lead agent uses Opus for coordination and plan approval</span>
+    <span class="token-comment">#               (teammates can use Sonnet for implementation)</span>
     <span class="token-comment"># --verbose: Detailed execution logging</span>
     <span class="token-function">cat</span> <span class="token-string">"$PROMPT_FILE"</span> | claude -p \
         --dangerously-skip-permissions \
@@ -1797,14 +2008,24 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
                 tool calls within a single task)
               </li>
               <li>
-                Each iteration = one fresh context window = one task from
-                IMPLEMENTATION_PLAN.md = one commit
+                Each iteration = one fresh context window = up to 5 tasks
+                from IMPLEMENTATION_PLAN.md via agent team = one commit
               </li>
               <li>
                 <code>./loop.sh</code> runs unlimited (manual stop with Ctrl+C)
               </li>
               <li>
                 <code>./loop.sh 20</code> runs max 20 tasks then stops
+              </li>
+            </ul>
+
+            <h4>Environment Variables</h4>
+            <ul>
+              <li>
+                <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code>: Enables
+                agent teams – allows the lead to spawn teammate agents that
+                collaborate via shared task list and direct messaging. Each
+                teammate gets its own context window and can work independently.
               </li>
             </ul>
 
@@ -1816,16 +2037,17 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
               </li>
               <li>
                 <code>--dangerously-skip-permissions</code>: Bypasses all
-                permission prompts for fully automated runs
+                permission prompts for fully automated runs (teammates inherit
+                this)
               </li>
               <li>
                 <code>--output-format=stream-json</code>: Outputs structured
                 JSON for logging/monitoring/visualization
               </li>
               <li>
-                <code>--model opus</code>: Primary agent uses Opus for task
-                selection, prioritization, and coordination (can use
-                <code>sonnet</code> for speed if tasks are clear)
+                <code>--model opus</code>: Lead agent uses Opus for
+                coordination and plan approval (teammates can use Sonnet for
+                implementation)
               </li>
               <li>
                 <code>--verbose</code>: Provides detailed execution logging
@@ -1960,14 +2182,17 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
               </table>
             </div>
 
-            <h4>Key Language Patterns (Geoff's specific phrasing)</h4>
+            <h4>Key Language Patterns (Geoff's specific phrasing, adapted for agent teams)</h4>
             <ul>
               <li>"study" (not "read" or "look at")</li>
               <li>
                 "don't assume not implemented" (critical – the Achilles' heel)
               </li>
-              <li>"using parallel subagents" / "up to N subagents"</li>
-              <li>"only 1 subagent for build/tests" (backpressure control)</li>
+              <li>"create an agent team" / "spawn teammates"</li>
+              <li>"delegate mode" (lead coordinates only, doesn't implement)</li>
+              <li>"plan approval" (teammates plan before implementing, lead reviews)</li>
+              <li>"file ownership" (prevent teammate conflicts on same files)</li>
+              <li>"clean up the team" (graceful shutdown after work completes)</li>
               <li>"Think extra hard" (now "Ultrathink")</li>
               <li>"capture the why"</li>
               <li>"keep it up to date"</li>
@@ -1982,7 +2207,7 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
             <p><em>Notes:</em></p>
             <ul>
               <li>Update [project-specific goal] placeholder below.</li>
-              <li>Current subagents names presume using Claude.</li>
+              <li>Requires <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code> environment variable.</li>
             </ul>
 
             <details>
@@ -1995,16 +2220,16 @@ CURRENT_BRANCH=$(<span class="token-function">git branch --show-current</span>)
                       Copy
                     </button>
                   </div>
-                  <pre><code>0a. Study `specs/*` with up to 250 parallel Sonnet subagents to learn the application specifications.
-0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0c. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities & components.
+                  <pre><code>0a. Create an agent team for planning research. Spawn 3-5 teammates to study `specs/*` in parallel and learn the application specifications.
+0b. Study @IMPLEMENTATION_PLAN.md and @LESSONS_LEARNED.md (if present) to understand the plan so far.
+0c. Have teammates study `src/lib/*` to understand shared utilities &amp; components.
 0d. For reference, the application source code is in `src/*`.
 
-1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 500 Sonnet subagents to study existing source code in `src/*` and compare it against `specs/*`. Use an Opus subagent to analyze findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and direct teammates to study existing source code in `src/*` and compare it against `specs/*`. Teammates should share findings and challenge each other's gap assessments via messaging. Synthesize teammate findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete. Clean up the team when planning is complete.
 
 IMPORTANT: Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
 
-ULTIMATE GOAL: We want to achieve [project-specific goal]. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.</code></pre>
+ULTIMATE GOAL: We want to achieve [project-specific goal]. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md.</code></pre>
                 </div>
               </div>
             </details>
@@ -2019,26 +2244,28 @@ ULTIMATE GOAL: We want to achieve [project-specific goal]. Consider missing elem
                       Copy
                     </button>
                   </div>
-                  <pre><code>0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
+                  <pre><code>0a. Create an agent team. Spawn teammates to study `specs/*` in parallel and learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md.
-0c. For reference, the application source code is in `src/*`.
+0c. Study @LESSONS_LEARNED.md.
+0d. For reference, the application source code is in `src/*`.
 
-1. Your task is to implement functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. Before making changes, search the codebase (don't assume not implemented) using Sonnet subagents. You may use up to 500 parallel Sonnet subagents for searches/reads and only 1 Sonnet subagent for build/tests. Use Opus subagents when complex reasoning is needed (debugging, architectural decisions).
-2. After implementing functionality or resolving problems, run the tests for that unit of code that was improved. If functionality is missing then it's your job to add it as per the application specifications. Ultrathink.
-3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings using a subagent. When resolved, update and remove the item.
-4. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`.
+1. Your task is to implement functionality per the specifications using an agent team. Follow @IMPLEMENTATION_PLAN.md and choose up to 5 independent items to address in parallel. Assign each task to a teammate with clear file ownership to prevent conflicts. Require plan approval before teammates implement — review and approve or reject with feedback. Before making changes, teammates must search the codebase (don't assume not implemented). Use delegate mode — coordinate, review plans, and synthesize only.
+2. After teammates implement functionality or resolve problems, have one teammate run the tests for the changed code. If functionality is missing then it's their job to add it as per the application specifications. Ultrathink.
+3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings. When resolved, update and remove the item.
+4. Append your progress and insights to @LESSONS_LEARNED.md (never replace, always append) sorted newest to oldest.
+5. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`. Clean up the team.
 
-99999. Important: When authoring documentation, capture the why – tests and implementation importance.
+99999. Important: When authoring documentation, capture the why — tests and implementation importance.
 999999. Important: Single sources of truth, no migrations/adapters. If tests unrelated to your work fail, resolve them as part of the increment.
-9999999. As soon as there are no build or test errors create a git tag. If there are no git tags start at 0.0.0 and increment patch by 1 for example 0.0.1  if 0.0.0 does not exist.
+9999999. As soon as there are no build or test errors create a git tag. If there are no git tags start at 0.0.0 and increment patch by 1 for example 0.0.1 if 0.0.0 does not exist.
 99999999. You may add extra logging if required to debug issues.
-999999999. Keep @IMPLEMENTATION_PLAN.md current with learnings using a subagent – future work depends on this to avoid duplicating efforts. Update especially after finishing your turn.
-9999999999. When you learn something new about how to run the application, update @AGENTS.md using a subagent but keep it brief. For example if you run commands multiple times before learning the correct command then that file should be updated.
-99999999999. For any bugs you notice, resolve them or document them in @IMPLEMENTATION_PLAN.md using a subagent even if it is unrelated to the current piece of work.
+999999999. Keep @IMPLEMENTATION_PLAN.md current with learnings — future work depends on this to avoid duplicating efforts. Update especially after finishing your turn.
+9999999999. When you learn something new about how to run the application, update @AGENTS.md but keep it brief. For example if you run commands multiple times before learning the correct command then that file should be updated.
+99999999999. For any bugs you notice, resolve them or document them in @IMPLEMENTATION_PLAN.md even if it is unrelated to the current piece of work.
 999999999999. Implement functionality completely. Placeholders and stubs waste efforts and time redoing the same work.
-9999999999999. When @IMPLEMENTATION_PLAN.md becomes large periodically clean out the items that are completed from the file using a subagent.
-99999999999999. If you find inconsistencies in the specs/* then use an Opus 4.5 subagent with 'ultrathink' requested to update the specs.
-999999999999999. IMPORTANT: Keep @AGENTS.md operational only – status updates and progress notes belong in `IMPLEMENTATION_PLAN.md`. A bloated AGENTS.md pollutes every future loop's context.</code></pre>
+9999999999999. When @IMPLEMENTATION_PLAN.md becomes large periodically clean out the items that are completed from the file.
+99999999999999. If you find inconsistencies in the specs/* then use a teammate with 'ultrathink' requested to update the specs.
+999999999999999. IMPORTANT: Keep @AGENTS.md operational only — status updates and progress notes belong in `IMPLEMENTATION_PLAN.md`. A bloated AGENTS.md pollutes every future loop's context.</code></pre>
                 </div>
               </div>
             </details>
@@ -2160,7 +2387,7 @@ Succinct learnings about how to RUN the project:
               <li>Consumed by both PLANNING and BUILDING modes</li>
               <li>
                 Can be updated if inconsistencies discovered (rare, use
-                subagent)
+                teammate)
               </li>
             </ul>
 
@@ -2676,7 +2903,7 @@ test("brand visual consistency", async () =&gt; {
                 <p>
                   After "...Study @IMPLEMENTATION_PLAN.md to determine starting
                   point for research and keep it up to date with items
-                  considered complete/incomplete using subagents." insert:
+                  considered complete/incomplete." insert:
                 </p>
                 <div class="code-block">
                   <div class="code-block-header">
@@ -2938,6 +3165,10 @@ set -euo pipefail
 #   ./loop.sh [plan] [max_iterations]       # Plan/build on current branch
 #   ./loop.sh plan-work "work description"  # Create scoped plan on current branch
 
+# Enable agent teams (experimental) — allows spawning teammate agents
+# that collaborate via shared task list and direct messaging
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+
 # Parse arguments
 MODE="build"
 PROMPT_FILE="PROMPT_build.md"
@@ -2976,16 +3207,16 @@ fi
                     <span>PROMPT_plan_work.md</span>
                     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                   </div>
-                  <pre><code>0a. Study `specs/*` with up to 250 parallel Sonnet subagents to learn the application specifications.
-0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0c. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities &amp; components.
+                  <pre><code>0a. Create an agent team for planning research. Spawn 3-5 teammates to study `specs/*` in parallel and learn the application specifications.
+0b. Study @IMPLEMENTATION_PLAN.md and @LESSONS_LEARNED.md (if present) to understand the plan so far.
+0c. Have teammates study `src/lib/*` to understand shared utilities &amp; components.
 0d. For reference, the application source code is in `src/*`.
 
-1. You are creating a SCOPED implementation plan for work: "${WORK_SCOPE}". Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 500 Sonnet subagents to study existing source code in `src/*` and compare it against `specs/*`. Use an Opus subagent to analyze findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+1. You are creating a SCOPED implementation plan for work: "${WORK_SCOPE}". Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and direct teammates to study existing source code in `src/*` and compare it against `specs/*`. Teammates should share findings and challenge each other's gap assessments via messaging. Synthesize teammate findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete. Clean up the team when planning is complete.
 
 IMPORTANT: This is SCOPED PLANNING for "${WORK_SCOPE}" only. Create a plan containing ONLY tasks directly related to this work scope. Be conservative - if uncertain whether a task belongs to this work, exclude it. The plan can be regenerated if too narrow. Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
 
-ULTIMATE GOAL: We want to achieve the scoped work "${WORK_SCOPE}". Consider missing elements related to this work and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.</code></pre>
+ULTIMATE GOAL: We want to achieve the scoped work "${WORK_SCOPE}". Consider missing elements related to this work and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md.</code></pre>
                 </div>
 
                 <h5>Compatibility with Core Philosophy</h5>
@@ -3370,7 +3601,7 @@ Design Studio:   batch       AI themes      templates       embed</code></pre>
                       release for the audience.
                       </li>
                       <li>
-                        Current subagents names presume using Claude.
+                        Requires <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code> environment variable.
                       </li>
                     </ul>
                     </p>
@@ -3382,20 +3613,20 @@ Design Studio:   batch       AI themes      templates       embed</code></pre>
                         </button>
                       </div>
                       <pre><code>0a. Study @AUDIENCE_JTBD.md to understand who we're building for and their Jobs to Be Done.
-0b. Study `specs/*` with up to 250 parallel Sonnet subagents to learn JTBD activities.
-0c. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0d. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities &amp; components.
+0b. Create an agent team for planning research. Spawn 3-5 teammates to study `specs/*` in parallel and learn JTBD activities.
+0c. Study @IMPLEMENTATION_PLAN.md and @LESSONS_LEARNED.md (if present) to understand the plan so far.
+0d. Have teammates study `src/lib/*` to understand shared utilities &amp; components.
 0e. For reference, the application source code is in `src/*`.
 
 1. Sequence the activities in `specs/*` into a user journey map for the audience in @AUDIENCE_JTBD.md. Consider how activities flow into each other and what dependencies exist.
 
-2. Determine the next SLC release. Use up to 500 Sonnet subagents to compare `src/*` against `specs/*`. Use an Opus subagent to analyze findings. Ultrathink. Given what's already implemented recommend which activities (at what capability depths) form the most valuable next release. Prefer thin horizontal slices - the narrowest scope that still delivers real value. A good slice is Simple (narrow, achievable), Lovable (people want to use it), and Complete (fully accomplishes a meaningful job, not a broken preview).
+2. Determine the next SLC release. Direct teammates to compare `src/*` against `specs/*`. Teammates should share findings and challenge each other's gap assessments via messaging. Ultrathink. Given what's already implemented recommend which activities (at what capability depths) form the most valuable next release. Prefer thin horizontal slices - the narrowest scope that still delivers real value. A good slice is Simple (narrow, achievable), Lovable (people want to use it), and Complete (fully accomplishes a meaningful job, not a broken preview).
 
-3. Use an Opus subagent (ultrathink) to analyze and synthesize the findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented for the recommended SLC release. Begin plan with a summary of the recommended SLC release (what's included and why), then list prioritized tasks for that scope. Consider TODOs, placeholders, minimal implementations, skipped tests - but scoped to the release. Note discoveries outside scope as future work.
+3. Synthesize teammate findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented for the recommended SLC release. Begin plan with a summary of the recommended SLC release (what's included and why), then list prioritized tasks for that scope. Consider TODOs, placeholders, minimal implementations, skipped tests - but scoped to the release. Note discoveries outside scope as future work. Clean up the team when planning is complete.
 
 IMPORTANT: Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
 
-ULTIMATE GOAL: We want to achieve the most valuable next release for the audience in @AUDIENCE_JTBD.md. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.</code></pre>
+ULTIMATE GOAL: We want to achieve the most valuable next release for the audience in @AUDIENCE_JTBD.md. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md.</code></pre>
                     </div>
 
                 <h5>Notes</h5>
@@ -3460,6 +3691,9 @@ ULTIMATE GOAL: We want to achieve the most valuable next release for the audienc
               <li><a href="#workflow" class="toc-link">Workflow</a></li>
               <li>
                 <a href="#key-principles" class="toc-link">Key Principles</a>
+              </li>
+              <li>
+                <a href="#agent-teams" class="toc-link">Agent Teams</a>
               </li>
               <li>
                 <a href="#loop-mechanics" class="toc-link">Loop Mechanics</a>
